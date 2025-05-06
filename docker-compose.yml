@@ -11,6 +11,7 @@ services:
       TOPIC_ID: "${TOPIC_ID}"      # Optional (for Telegram Topics)
       FILTER_FILE: "/config/filter_domains.txt"
       LOG_FILE: "/logs/pihole.log"
+      ALERT_COOLDOWN: "${ALERT_COOLDOWN:-3600}"  # Cooldown in seconds (0 = disable)
     volumes:
       - ./config:/config           # Local config directory
       - pihole-logs:/logs:ro       # Named volume (recommended)
@@ -18,8 +19,8 @@ services:
 
 volumes:
   pihole-logs:
-    external: true                 # Use existing Pi-hole logs volume
-    name: "${PIHOLE_VOLUME:-pihole}"  # Default to 'pihole' volume name
+    external: true                 # Use existing Pi-hole logs volume.
+    name: "${PIHOLE_VOLUME:-pihole-logs}"  # Default to 'pihole-logs' volume name
 
 # Alternative Pi-hole log mounting (if using host logs):
 # volumes:

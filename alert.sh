@@ -17,10 +17,24 @@ log_error() {
     echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') [ERROR] $1" >&2 | tee -a "$ALERT_LOG"
 }
 
+# Validate configuration
+validate_cooldown() {
+    if ! [[ "$ALERT_COOLDOWN" =~ ^[0-9]+$ ]]; then
+        log_error "Invalid ALERT_COOLDOWN value: '$ALERT_COOLDOWN'. Must be integer >= 0"
+        exit 1
+    fi
+    
+    if [ "$ALERT_COOLDOWN" -lt 0 ]; then
+        log_error "ALERT_COOLDOWN cannot be negative. Current value: $ALERT_COOLDOWN"
+        exit 1
+    fi
+}
+
 # Validate required parameters
 check_env() {
     log_info "Starting Pi-hole Alert Monitor"
     log_info "Initializing environment checks..."
+    log_info "Alert cooldown set to: $ALERT_COOLDOWN seconds"
 
     local missing=()
     [ -z "$TELEGRAM_TOKEN" ] && missing+=("TELEGRAM_TOKEN")
@@ -55,6 +69,7 @@ check_env() {
 
 # Initial environment check
 check_env
+validate_cooldown
 
 # Spam prevention cache
 declare -A sent_cache
@@ -88,13 +103,15 @@ main() {
             domain=$(echo "$line" | awk -F ' ' '{print $6}' | sed 's/\/$//')
 
             if grep -qFx "$domain" "$FILTER_FILE"; then
-                echo "Trigger"
-                if [[ -z "${sent_cache[$domain]}" ]]; then
+                if [ "$ALERT_COOLDOWN" -eq 0 ] || [[ -z "${sent_cache[$domain]}" ]]; then
                     user=$(echo "$line" | awk -F ' ' '{print $8}')
                     log_info "Detected blocked domain: $domain (user: $user)"
                     send_alert "$domain" "$user"
-                    sent_cache["$domain"]=1
-                    (sleep 3600 && unset sent_cache["$domain"]) &
+                    
+                    if [ "$ALERT_COOLDOWN" -gt 0 ]; then
+                        sent_cache["$domain"]=1
+                        (sleep "$ALERT_COOLDOWN" && unset sent_cache["$domain"]) &
+                    fi
                 fi
             fi
         fi
