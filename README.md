@@ -28,3 +28,6 @@ Configure the bot behavior using environment variables. Here's the complete list
 | `TOPIC_ID` | No | Message thread ID for Telegram Topics | Empty | `123` |
 | `LOG_FILE` | No | Pi-hole log file location | `/logs/pihole.log` | `/var/log/pihole/pihole.log` |
 | `ALERT_COOLDOWN` | No | Anti-spam interval in seconds<br>`0` = disable protection | `3600` (1 hour) | `300` = 5 minutes |
+
+## Docker hub image
+URL: https://hub.docker.com/r/guideglyph/pihole-telegram-alerts

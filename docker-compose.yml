@@ -1,9 +1,10 @@
 version: '3.8'
 
 services:
-  pihole-alert:
-    build: .
-    container_name: pihole-alert
+  pihole-alerts:
+    image: guideglyph/pihole-telegram-alerts:v1.1
+    # build: .
+    container_name: pihole-alerts
     restart: unless-stopped
     environment:
       TELEGRAM_TOKEN: "${TELEGRAM_TOKEN}"
