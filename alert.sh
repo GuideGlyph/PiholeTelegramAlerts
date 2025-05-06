@@ -4,9 +4,11 @@
 TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
 CHAT_ID=${CHAT_ID}
 TOPIC_ID=${TOPIC_ID:-} # optional
-FILTER_FILE=${FILTER_FILE:-"/config/filter_domains.txt"}
+FILTER_DIR=${FILTER_DIR:-"/config"}
 LOG_FILE=${LOG_FILE:-"/logs/pihole.log"}
+ALERT_COOLDOWN=${ALERT_COOLDOWN:-3600}
 ALERT_LOG="/var/log/alerts/alerts.log"
+COMBINED_FILTER="/tmp/combined_filters.txt"  # Combined filters cache
 
 # Logging functions
 log_info() {
@@ -15,6 +17,17 @@ log_info() {
 
 log_error() {
     echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') [ERROR] $1" >&2 | tee -a "$ALERT_LOG"
+}
+
+# Combine all filter files
+combine_filters() {
+    find "$FILTER_DIR" -type f -name "*.txt" -exec cat {} + | 
+    grep -v '^#' |
+    sed '/^$/d' |
+    sort -u > "$COMBINED_FILTER"
+    
+    local total_domains=$(wc -l < "$COMBINED_FILTER")
+    log_info "Combined ${total_domains} domains from ${#filter_files[@]} files"
 }
 
 # Validate configuration
@@ -39,7 +52,6 @@ check_env() {
     local missing=()
     [ -z "$TELEGRAM_TOKEN" ] && missing+=("TELEGRAM_TOKEN")
     [ -z "$CHAT_ID" ] && missing+=("CHAT_ID")
-    [ -z "$FILTER_FILE" ] && missing+=("FILTER_FILE")
     [ -z "$LOG_FILE" ] && missing+=("LOG_FILE")
 
     if [ ${#missing[@]} -gt 0 ]; then
@@ -48,19 +60,30 @@ check_env() {
         exit 1
     fi
 
-    # Check files existence
-    [ ! -f "$FILTER_FILE" ] && log_error "Filter file $FILTER_FILE not found!" && exit 1
-    [ ! -f "$LOG_FILE" ] && log_error "Log file $LOG_FILE not found!" && exit 1
-
-    # Check filter file content
-    local filter_lines=$(wc -l < "$FILTER_FILE")
-    if [ "$filter_lines" -eq 0 ]; then
-        log_error "Filter file $FILTER_FILE is empty!"
+    # Check filter directory
+    if [ ! -d "$FILTER_DIR" ]; then
+        log_error "Filter directory $FILTER_DIR not found!"
         exit 1
     fi
-    log_info "Loaded filter file with $filter_lines domains"
 
-    # Check write permissions for alert log
+    # Check filter files
+    filter_files=("$FILTER_DIR"/*.txt)
+    if [ ${#filter_files[@]} -eq 0 ]; then
+        log_error "No filter files found in $FILTER_DIR!"
+        exit 1
+    fi
+
+    # Combine filters
+    combine_filters
+    if [ ! -s "$COMBINED_FILTER" ]; then
+        log_error "No valid domains found in filter files!"
+        exit 1
+    fi
+
+    # Check log file
+    [ ! -f "$LOG_FILE" ] && log_error "Log file $LOG_FILE not found!" && exit 1
+
+    # Check alert log permissions
     touch "$ALERT_LOG" || {
         log_error "Cannot write to alert log file: $ALERT_LOG"
         exit 1
@@ -102,7 +125,7 @@ main() {
         if echo "$line" | grep -q "from"; then
             domain=$(echo "$line" | awk -F ' ' '{print $6}' | sed 's/\/$//')
 
-            if grep -qFx "$domain" "$FILTER_FILE"; then
+            if grep -qFx "$domain" "$COMBINED_FILTER"; then
                 if [ "$ALERT_COOLDOWN" -eq 0 ] || [[ -z "${sent_cache[$domain]}" ]]; then
                     user=$(echo "$line" | awk -F ' ' '{print $8}')
                     log_info "Detected blocked domain: $domain (user: $user)"

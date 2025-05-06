@@ -9,7 +9,6 @@ services:
       TELEGRAM_TOKEN: "${TELEGRAM_TOKEN}"
       CHAT_ID: "${CHAT_ID}"
       TOPIC_ID: "${TOPIC_ID}"      # Optional (for Telegram Topics)
-      FILTER_FILE: "/config/filter_domains.txt"
       LOG_FILE: "/logs/pihole.log"
       ALERT_COOLDOWN: "${ALERT_COOLDOWN:-3600}"  # Cooldown in seconds (0 = disable)
     volumes:
