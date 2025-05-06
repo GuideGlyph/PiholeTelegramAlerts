@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  pihole-alert:
+    build: .
+    container_name: pihole-alert
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - CHAT_ID=${CHAT_ID}
+      - TOPIC_ID=${TOPIC_ID}  # optional
+      - FILTER_FILE=/config/filter_domains.txt
+      - LOG_FILE=/logs/pihole.log
+    volumes:
+      - ./config:/config
+      - /var/log/pihole:/logs:ro
+      - ./alerts.log:/app/alerts.log
