@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   pihole-alert:
@@ -6,12 +6,21 @@ services:
     container_name: pihole-alert
     restart: unless-stopped
     environment:
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - CHAT_ID=${CHAT_ID}
-      - TOPIC_ID=${TOPIC_ID}  # optional
-      - FILTER_FILE=/config/filter_domains.txt
-      - LOG_FILE=/logs/pihole.log
+      TELEGRAM_TOKEN: "${TELEGRAM_TOKEN}"
+      CHAT_ID: "${CHAT_ID}"
+      TOPIC_ID: "${TOPIC_ID}"      # Optional (for Telegram Topics)
+      FILTER_FILE: "/config/filter_domains.txt"
+      LOG_FILE: "/logs/pihole.log"
     volumes:
-      - ./config:/config
-      - /var/log/pihole:/logs:ro
-      - ./alerts.log:/app/alerts.log
+      - ./config:/config           # Local config directory
+      - pihole-logs:/logs:ro       # Named volume (recommended)
+      # - ./alerts:/var/log/alerts # Uncomment to persist alert logs
+
+volumes:
+  pihole-logs:
+    external: true                 # Use existing Pi-hole logs volume
+    name: "${PIHOLE_VOLUME:-pihole}"  # Default to 'pihole' volume name
+
+# Alternative Pi-hole log mounting (if using host logs):
+# volumes:
+#   - /var/log/pihole:/logs:ro

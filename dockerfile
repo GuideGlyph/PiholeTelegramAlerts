@@ -4,7 +4,6 @@ FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y \
     bash \
     grep \
-    awk \
     coreutils \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -14,6 +13,7 @@ COPY alert.sh ./
 RUN chmod +x alert.sh
 
 # Create log file with write permissions
-RUN touch /app/alerts.log && chmod 666 /app/alerts.log
+RUN mkdir -p /var/log/alerts
+RUN touch /var/log/alerts/alerts.log && chmod 666 /var/log/alerts/alerts.log
 
 CMD ["bash", "/app/alert.sh"]
